@@ -10,7 +10,7 @@ pub struct MeshVertexRecord {
     pub color: Rgba<u8>,
     pub normal: Vec3<f32>
 }
-#[derive(Debug)]
+
 pub enum ShaderType {
     Opaque = 0,
     Transparent = 1,
