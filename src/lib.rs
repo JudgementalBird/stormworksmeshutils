@@ -1,6 +1,5 @@
-use std::io::SeekFrom;
+use std::{fs::File, io::{BufReader, Read, Seek, SeekFrom}};
 
-use tokio::{fs::File, io::{AsyncReadExt, AsyncSeekExt, BufReader}};
 use vek::{vec::repr_c::vec3::Vec3, Rgba};
 
 const BYTES_PER_COMPONENT: usize  = 4;
@@ -46,22 +45,23 @@ pub struct Mesh {
     sub_meshes: Vec<SubMesh>,
 }
 
-async fn read_u16_from(reader: &mut BufReader<File>) -> u16 {
+fn read_u16_from(reader: &mut BufReader<File>) -> u16 {
     let mut byte_buffer: [u8;2] = [0;2];
-    reader.read_exact(&mut byte_buffer).await.unwrap();
+    reader.read_exact(&mut byte_buffer).unwrap();
     u16::from_le_bytes(byte_buffer)
 }
-async fn read_u32_from(reader: &mut BufReader<File>) -> u32 {
+fn read_u32_from(reader: &mut BufReader<File>) -> u32 {
     let mut byte_buffer: [u8;4] = [0;4];
-    reader.read_exact(&mut byte_buffer).await.unwrap();
+    reader.read_exact(&mut byte_buffer).unwrap();
     u32::from_le_bytes(byte_buffer)
 }
 
+
 // Our version of `public VertexRecord(byte[] bytes)`
-async fn build_vertex_record(mesh_stream: &mut BufReader<File>) -> MeshVertexRecord {
+fn build_vertex_record(mesh_stream: &mut BufReader<File>) -> MeshVertexRecord {
 
     let mut vertex_record_bytes = [0_u8;BYTES_PER_VERTEX];
-    mesh_stream.read_exact(&mut vertex_record_bytes).await.unwrap();
+    mesh_stream.read_exact(&mut vertex_record_bytes).unwrap();
 
     let position_x = f32::from_le_bytes(vertex_record_bytes[0..=3].try_into().unwrap());
     let position_y = f32::from_le_bytes(vertex_record_bytes[4..=7].try_into().unwrap());
@@ -86,18 +86,18 @@ async fn build_vertex_record(mesh_stream: &mut BufReader<File>) -> MeshVertexRec
     } 
 }
 
-async fn build_vertices(mesh_stream: &mut BufReader<File>, vertex_count: u32) -> Vec<MeshVertexRecord> {
+fn build_vertices(mesh_stream: &mut BufReader<File>, vertex_count: u32) -> Vec<MeshVertexRecord> {
     let mut vertices = Vec::new();
     for _ in 0..vertex_count {
-        vertices.push(build_vertex_record(mesh_stream).await);
+        vertices.push(build_vertex_record(mesh_stream));
     }
     return vertices
 }
 
-async fn build_indices(mesh_stream: &mut BufReader<File>, index_count: u32, vertex_count: u32) -> Vec<u32> {
+fn build_indices(mesh_stream: &mut BufReader<File>, index_count: u32, vertex_count: u32) -> Vec<u32> {
     let mut indices = Vec::new();
     for i in 0..index_count {
-        let index = read_u16_from(mesh_stream).await as u32;
+        let index = read_u16_from(mesh_stream) as u32;
         if index >= vertex_count {
             panic!("Index #{i} is out of bounds {index} > {vertex_count}.");
         }
@@ -106,20 +106,20 @@ async fn build_indices(mesh_stream: &mut BufReader<File>, index_count: u32, vert
     return indices
 }
 
-async fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> SubMesh {
-    let index_buffer_start = read_u32_from(mesh_stream).await;
+fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> SubMesh {
+    let index_buffer_start = read_u32_from(mesh_stream);
 
-    let index_buffer_length = read_u32_from(mesh_stream).await;
+    let index_buffer_length = read_u32_from(mesh_stream);
 
-    mesh_stream.seek(SeekFrom::Current(2)).await.unwrap(); // Header 2
+    mesh_stream.seek(SeekFrom::Current(2)).unwrap(); // Header 2
 
     let shader_id = ShaderType::from_u16(
-        read_u16_from(mesh_stream).await
+        read_u16_from(mesh_stream)
     );
 
-    mesh_stream.seek(SeekFrom::Current(4*3+4*3+2)).await.unwrap();
+    mesh_stream.seek(SeekFrom::Current(4*3+4*3+2)).unwrap();
 
-    let name_length_bytes = read_u16_from(mesh_stream).await;
+    let name_length_bytes = read_u16_from(mesh_stream);
     
     if name_length_bytes > 1_000 {
         panic!("name_length_bytes is extremely larderous.")
@@ -129,11 +129,11 @@ async fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> SubMesh {
     for _ in 0..name_length_bytes {
         name_buf.push(0);
     }
-    mesh_stream.read_exact(&mut name_buf).await.unwrap();
+    mesh_stream.read_exact(&mut name_buf).unwrap();
     //println!("debg: {:?}",name_buf);
     let name = String::from_utf8(name_buf).unwrap();
 
-    mesh_stream.seek(SeekFrom::Current(4*3)).await.unwrap(); // Header 8
+    mesh_stream.seek(SeekFrom::Current(4*3)).unwrap(); // Header 8
     
     SubMesh {
         index_buffer_start,
@@ -144,10 +144,10 @@ async fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> SubMesh {
     }
 }
 
-async fn build_sub_meshes(mesh_stream: &mut BufReader<File>, sub_mesh_count: u32, index_count: u32) -> Vec<SubMesh> {
+fn build_sub_meshes(mesh_stream: &mut BufReader<File>, sub_mesh_count: u32, index_count: u32) -> Vec<SubMesh> {
     let mut sub_meshes = Vec::with_capacity(sub_mesh_count as usize);
     for i in 0..sub_mesh_count {
-        let sub_mesh = build_sub_mesh(mesh_stream).await;
+        let sub_mesh = build_sub_mesh(mesh_stream);
         
         if sub_mesh.index_buffer_start > index_count {
             panic!("THIS ERROR IS COPIED sub_mesh #{}'s index_buffer starts out of bounds {} > {}",i,sub_mesh.index_buffer_start,index_count);
@@ -163,35 +163,35 @@ async fn build_sub_meshes(mesh_stream: &mut BufReader<File>, sub_mesh_count: u32
 }
 
 // our version of `public static Mesh LoadMesh(Stream stream, MeshDiagCallback diag = null)`
-pub async fn build_mesh(mut mesh_stream: BufReader<File>) -> Result<Mesh,String> {
+pub fn build_mesh(mut mesh_stream: BufReader<File>) -> Result<Mesh,String> {
     // first 4 bytes are 4 chars, the file type header 'mesh'
     let mut filetypemarker: [u8;4] = [0;4];
-    mesh_stream.read_exact(&mut filetypemarker).await.unwrap();
+    mesh_stream.read_exact(&mut filetypemarker).unwrap();
     if filetypemarker != *b"mesh" {
         panic!("not a mesh...")
     }
 
     // the following 4 bytes are header0 and header1
-    mesh_stream.seek(SeekFrom::Current(4)).await.unwrap();
+    mesh_stream.seek(SeekFrom::Current(4)).unwrap();
 
-    let vertex_count = read_u16_from(&mut mesh_stream).await as u32;
+    let vertex_count = read_u16_from(&mut mesh_stream) as u32;
 
     // the following 4 bytes are header3 and header4
-    mesh_stream.seek(SeekFrom::Current(4)).await.unwrap();
+    mesh_stream.seek(SeekFrom::Current(4)).unwrap();
 
-    let vertices: Vec<MeshVertexRecord> = build_vertices(&mut mesh_stream, vertex_count).await;
+    let vertices: Vec<MeshVertexRecord> = build_vertices(&mut mesh_stream, vertex_count);
 
     // on to indices
-    let index_count = read_u32_from(&mut mesh_stream).await;
+    let index_count = read_u32_from(&mut mesh_stream);
 
-    let indices = build_indices(&mut mesh_stream, index_count, vertex_count).await;
+    let indices = build_indices(&mut mesh_stream, index_count, vertex_count);
 
     // on to submeshes
-    let sub_mesh_count = read_u16_from(&mut mesh_stream).await as u32;
+    let sub_mesh_count = read_u16_from(&mut mesh_stream) as u32;
     //if sub_mesh_count > 1 {
     //    return Result::Err(String::from("Shit!"));
     //}
-    let sub_meshes = build_sub_meshes(&mut mesh_stream, sub_mesh_count, index_count).await;
+    let sub_meshes = build_sub_meshes(&mut mesh_stream, sub_mesh_count, index_count);
 
     // end of data
 
