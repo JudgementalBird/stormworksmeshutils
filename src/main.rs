@@ -16,7 +16,7 @@ fn get_files_to_load(dir: &Path) -> Vec<PathBuf> {
 }
 
 async fn async_load_all() -> Vec<Result<mesh_parser::Mesh, String>> {
-    let thelist = get_files_to_load(&PathBuf::from("C:\\Users\\Squingle\\Downloads\\stormworks meshes"));
+    let thelist = get_files_to_load(&PathBuf::from("C:\\Users\\Generic\\Downloads\\stormworks meshes"));
     let semaphore = Arc::new(Semaphore::new(15));
     let mut tasks = Vec::new();
 
@@ -34,7 +34,7 @@ async fn async_load_all() -> Vec<Result<mesh_parser::Mesh, String>> {
 }
 
 fn sync_load_all() {
-    let thelist = get_files_to_load(&PathBuf::from("C:\\Users\\Squingle\\Downloads\\stormworks meshes"));
+    let thelist = get_files_to_load(&PathBuf::from("C:\\Users\\Generic\\Downloads\\stormworks meshes"));
     for path in thelist {
         let file = File::open(&path).unwrap();
         build_mesh(BufReader::new(file)).unwrap();

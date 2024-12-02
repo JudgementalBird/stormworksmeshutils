@@ -204,7 +204,3 @@ pub fn build_mesh(mut mesh_stream: BufReader<File>) -> Result<Mesh,String> {
         sub_meshes
     })
 }
-
-//fn save_ply(mesh: Mesh, ply_stream: BufWriter<File>) {
-//    
-//}
