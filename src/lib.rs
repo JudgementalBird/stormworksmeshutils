@@ -44,6 +44,7 @@ pub struct Mesh {
     pub sub_meshes: Vec<SubMesh>,
 }
 
+#[derive(Debug)]
 pub enum Error {
     FromUtf8(FromUtf8Error),
     Io(io::Error),
