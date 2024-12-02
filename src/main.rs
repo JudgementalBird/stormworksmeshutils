@@ -101,9 +101,9 @@ fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> SubMesh {
     mesh_stream.read_exact(&mut index_buffer_start_buf).unwrap();
     let index_buffer_start = u32::from_le_bytes(index_buffer_start_buf);
 
-    let mut index_buffer_end_buf: [u8;4] = [0;4];
-    mesh_stream.read_exact(&mut index_buffer_end_buf).unwrap();
-    let index_buffer_end = u32::from_le_bytes(index_buffer_end_buf);
+    let mut index_buffer_length_buf: [u8;4] = [0;4];
+    mesh_stream.read_exact(&mut index_buffer_length_buf).unwrap();
+    let index_buffer_length = u32::from_le_bytes(index_buffer_length_buf);
 
     mesh_stream.seek(SeekFrom::Current(2)).unwrap(); // Header 2
 
@@ -128,7 +128,7 @@ fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> SubMesh {
     let name = String::from_utf8(name_buf).unwrap();
     mesh_stream.seek(SeekFrom::Current(4*3)).unwrap(); // Header 8
 
-    let index_buffer_length = index_buffer_end-index_buffer_start;
+    let index_buffer_length = index_buffer_length;
     
     SubMesh {
         index_buffer_start,
