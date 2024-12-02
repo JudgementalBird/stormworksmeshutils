@@ -56,11 +56,6 @@ async fn read_u32_from(reader: &mut BufReader<File>) -> u32 {
     reader.read_exact(&mut byte_buffer).await.unwrap();
     u32::from_le_bytes(byte_buffer)
 }
-async fn read_f32_from(reader: &mut BufReader<File>) -> f32 {
-    let mut byte_buffer: [u8;4] = [0;4];
-    reader.read_exact(&mut byte_buffer).await.unwrap();
-    f32::from_le_bytes(byte_buffer)
-}
 
 // Our version of `public VertexRecord(byte[] bytes)`
 async fn build_vertex_record(mesh_stream: &mut BufReader<File>) -> MeshVertexRecord {
