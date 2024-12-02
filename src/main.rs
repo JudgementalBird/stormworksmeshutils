@@ -123,12 +123,14 @@ fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> SubMesh {
     }
 
     let mut name_buf = Vec::with_capacity(name_length_bytes as usize);
+    for _ in 0..name_length_bytes {
+        name_buf.push(0);
+    }
     mesh_stream.read_exact(&mut name_buf).unwrap();
     println!("debg: {:?}",name_buf);
     let name = String::from_utf8(name_buf).unwrap();
+    
     mesh_stream.seek(SeekFrom::Current(4*3)).unwrap(); // Header 8
-
-    let index_buffer_length = index_buffer_length;
     
     SubMesh {
         index_buffer_start,
