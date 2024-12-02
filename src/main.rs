@@ -14,7 +14,7 @@ fn get_files_to_load(dir: &Path) -> Vec<PathBuf> {
     }
     mylist
 }
- 
+
 async fn load_all() -> Vec<Result<mesh_parser::Mesh, String>> {
     let thelist = get_files_to_load(&PathBuf::from("C:\\Users\\Squingle\\Downloads\\stormworks meshes"));
     let semaphore = Arc::new(Semaphore::new(15));

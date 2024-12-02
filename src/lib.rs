@@ -114,7 +114,7 @@ async fn build_indices(mesh_stream: &mut BufReader<File>, index_count: u32, vert
 async fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> SubMesh {
     let index_buffer_start = read_u32_from(mesh_stream).await;
 
-    let index_buffer_end = read_u32_from(mesh_stream).await;
+    let index_buffer_length = read_u32_from(mesh_stream).await;
 
     mesh_stream.seek(SeekFrom::Current(2)).await.unwrap(); // Header 2
 
@@ -131,12 +131,14 @@ async fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> SubMesh {
     }
 
     let mut name_buf = Vec::with_capacity(name_length_bytes as usize);
+    for _ in 0..name_length_bytes {
+        name_buf.push(0);
+    }
     mesh_stream.read_exact(&mut name_buf).await.unwrap();
     //println!("debg: {:?}",name_buf);
     let name = String::from_utf8(name_buf).unwrap();
-    mesh_stream.seek(SeekFrom::Current(4*3)).await.unwrap(); // Header 8
 
-    let index_buffer_length = index_buffer_end-index_buffer_start;
+    mesh_stream.seek(SeekFrom::Current(4*3)).await.unwrap(); // Header 8
     
     SubMesh {
         index_buffer_start,
