@@ -1,5 +1,5 @@
 [package]
-name = "mesh_parser"
+name = "stormworks_mesh_parser"
 version = "0.1.1"
 edition = "2021"
 license = "GPL-3.0-or-later"

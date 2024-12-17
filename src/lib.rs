@@ -5,43 +5,43 @@ const BYTES_PER_COMPONENT: usize  = 4;
 const ENTRIES_PER_VERTEX: usize = 7;
 const BYTES_PER_VERTEX: usize = BYTES_PER_COMPONENT*ENTRIES_PER_VERTEX;
 
-pub struct MeshVertexRecord {
+pub struct StormworksMeshVertexRecord {
     pub position: Vec3<f32>,
     pub color: Rgba<u8>,
     pub normal: Vec3<f32>
 }
 
-pub enum ShaderType {
+pub enum StormworksShaderType {
     Opaque = 0,
     Transparent = 1,
     Emissive = 2,
     Lava = 3
 }
-impl ShaderType {
+impl StormworksShaderType {
     fn from_u16(i: u16) -> Self {
         match i {
-            0 => ShaderType::Opaque,
-            1 => ShaderType::Transparent,
-            2 => ShaderType::Emissive,
-            3 => ShaderType::Lava,
-            _ => panic!("Tried to make ShaderType from u16 with value {i}")
+            0 => StormworksShaderType::Opaque,
+            1 => StormworksShaderType::Transparent,
+            2 => StormworksShaderType::Emissive,
+            3 => StormworksShaderType::Lava,
+            _ => panic!("Tried to make StormworksShaderType from u16 with value {i}")
         }
     }
 }
-pub struct SubMesh {
+pub struct StormworksSubMesh {
     pub index_buffer_start: u32,
     pub index_buffer_length: u32,
-    pub shader_id: ShaderType,
+    pub shader_id: StormworksShaderType,
     pub name_length_bytes: u16,
     pub name: String,
 }
-pub struct Mesh {
+pub struct StormworksMesh {
     pub vertex_count: u32,
-    pub vertices: Vec<MeshVertexRecord>,
+    pub vertices: Vec<StormworksMeshVertexRecord>,
     pub index_count: u32,
     pub indices: Vec<u32>,
     pub sub_mesh_count: u32,
-    pub sub_meshes: Vec<SubMesh>,
+    pub sub_meshes: Vec<StormworksSubMesh>,
 }
 
 #[derive(Debug)]
@@ -79,7 +79,7 @@ fn read_u32_from(reader: &mut BufReader<File>) -> Result<u32,Error> {
 
 
 // Our version of `public VertexRecord(byte[] bytes)`
-fn build_vertex_record(mesh_stream: &mut BufReader<File>) -> Result<MeshVertexRecord,Error> {
+fn build_vertex_record(mesh_stream: &mut BufReader<File>) -> Result<StormworksMeshVertexRecord,Error> {
 
     let mut vertex_record_bytes = [0_u8;BYTES_PER_VERTEX];
     mesh_stream.read_exact(&mut vertex_record_bytes)?;
@@ -100,14 +100,14 @@ fn build_vertex_record(mesh_stream: &mut BufReader<File>) -> Result<MeshVertexRe
     let normal_z = f32::from_le_bytes(vertex_record_bytes[24..=27].try_into()?);
     let normal = Vec3::new(normal_x,normal_y,normal_z);
 
-    Ok(MeshVertexRecord {
+    Ok(StormworksMeshVertexRecord {
         position,
         color,
         normal
     })
 }
 
-fn build_vertices(mesh_stream: &mut BufReader<File>, vertex_count: u32) -> Result<Vec<MeshVertexRecord>,Error> {
+fn build_vertices(mesh_stream: &mut BufReader<File>, vertex_count: u32) -> Result<Vec<StormworksMeshVertexRecord>,Error> {
     let mut vertices = Vec::new();
     for _ in 0..vertex_count {
         vertices.push(build_vertex_record(mesh_stream)?);
@@ -127,14 +127,14 @@ fn build_indices(mesh_stream: &mut BufReader<File>, index_count: u32, vertex_cou
     return Ok(indices)
 }
 
-fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> Result<SubMesh,Error> {
+fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> Result<StormworksSubMesh,Error> {
     let index_buffer_start = read_u32_from(mesh_stream)?;
 
     let index_buffer_length = read_u32_from(mesh_stream)?;
 
     mesh_stream.seek(SeekFrom::Current(2))?; // Header 2
 
-    let shader_id = ShaderType::from_u16(
+    let shader_id = StormworksShaderType::from_u16(
         read_u16_from(mesh_stream)?
     );
 
@@ -156,7 +156,7 @@ fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> Result<SubMesh,Error> {
 
     mesh_stream.seek(SeekFrom::Current(4*3))?; // Header 8
     
-    Ok(SubMesh {
+    Ok(StormworksSubMesh {
         index_buffer_start,
         index_buffer_length,
         shader_id,
@@ -165,7 +165,7 @@ fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> Result<SubMesh,Error> {
     })
 }
 
-fn build_sub_meshes(mesh_stream: &mut BufReader<File>, sub_mesh_count: u32, index_count: u32) -> Result<Vec<SubMesh>,Error> {
+fn build_sub_meshes(mesh_stream: &mut BufReader<File>, sub_mesh_count: u32, index_count: u32) -> Result<Vec<StormworksSubMesh>,Error> {
     let mut sub_meshes = Vec::with_capacity(sub_mesh_count as usize);
     for i in 0..sub_mesh_count {
         let sub_mesh = build_sub_mesh(mesh_stream)?;
@@ -185,7 +185,7 @@ fn build_sub_meshes(mesh_stream: &mut BufReader<File>, sub_mesh_count: u32, inde
 
 // our version of `public static Mesh LoadMesh(Stream stream, MeshDiagCallback diag = null)`
 /// yum,,!
-pub fn build_mesh(mut mesh_stream: BufReader<File>) -> Result<Mesh,Error> {
+pub fn build_stormworks_mesh(mut mesh_stream: BufReader<File>) -> Result<StormworksMesh,Error> {
     // first 4 bytes are 4 chars, the file type header 'mesh'
     let mut filetypemarker: [u8;4] = [0;4];
     mesh_stream.read_exact(&mut filetypemarker)?;
@@ -215,7 +215,7 @@ pub fn build_mesh(mut mesh_stream: BufReader<File>) -> Result<Mesh,Error> {
 
     // end of data
 
-    Result::Ok(Mesh {
+    Result::Ok(StormworksMesh {
         vertex_count, // the following 2 bytes are vertex_count
         vertices, // the following 
         index_count,
