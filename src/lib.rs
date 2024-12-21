@@ -18,13 +18,13 @@ pub enum StormworksShaderType {
     Lava = 3
 }
 impl StormworksShaderType {
-    fn from_u16(i: u16) -> Self {
+    fn from_u16(i: u16) -> Result<Self,Error> {
         match i {
-            0 => StormworksShaderType::Opaque,
-            1 => StormworksShaderType::Transparent,
-            2 => StormworksShaderType::Emissive,
-            3 => StormworksShaderType::Lava,
-            _ => panic!("Tried to make StormworksShaderType from u16 with value {i}")
+            0 => Ok(StormworksShaderType::Opaque),
+            1 => Ok(StormworksShaderType::Transparent),
+            2 => Ok(StormworksShaderType::Emissive),
+            3 => Ok(StormworksShaderType::Lava),
+            _ => Err(Error::InvalidStormworksShaderType(i)),
         }
     }
 }
@@ -49,6 +49,10 @@ pub enum Error {
     FromUtf8(FromUtf8Error),
     Io(io::Error),
     FromSlice(TryFromSliceError),
+    OutOfBounds(String),
+    Larderous(String),
+    NotMesh,
+    InvalidStormworksShaderType(u16),
 }
 impl From<FromUtf8Error> for Error {
     fn from(value: FromUtf8Error) -> Self {
@@ -120,7 +124,7 @@ fn build_indices(mesh_stream: &mut BufReader<File>, index_count: u32, vertex_cou
     for i in 0..index_count {
         let index = read_u16_from(mesh_stream)? as u32;
         if index >= vertex_count {
-            panic!("Index #{i} is out of bounds {index} > {vertex_count}.");
+            return Err(Error::OutOfBounds(format!("Index #{i} is out of bounds {index} > {vertex_count}.")));
         }
         indices.push(index);
     }
@@ -136,14 +140,14 @@ fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> Result<StormworksSubMesh
 
     let shader_id = StormworksShaderType::from_u16(
         read_u16_from(mesh_stream)?
-    );
+    )?;
 
     mesh_stream.seek(SeekFrom::Current(4*3+4*3+2))?;
 
     let name_length_bytes = read_u16_from(mesh_stream)?;
     
     if name_length_bytes > 1_000 {
-        panic!("name_length_bytes is extremely larderous.")
+        return Err(Error::Larderous(String::from("name_length_bytes is extremely larderous.")));
     }
 
     let mut name_buf = Vec::with_capacity(name_length_bytes as usize);
@@ -171,11 +175,11 @@ fn build_sub_meshes(mesh_stream: &mut BufReader<File>, sub_mesh_count: u32, inde
         let sub_mesh = build_sub_mesh(mesh_stream)?;
         
         if sub_mesh.index_buffer_start > index_count {
-            panic!("THIS ERROR IS COPIED sub_mesh #{}'s index_buffer starts out of bounds {} > {}",i,sub_mesh.index_buffer_start,index_count);
+            return Err(Error::OutOfBounds(format!("THIS ERROR IS COPIED sub_mesh #{}'s index_buffer starts out of bounds {} > {}",i,sub_mesh.index_buffer_start,index_count)));
         }
 
         if sub_mesh.index_buffer_start + sub_mesh.index_buffer_length > index_count {
-            panic!("THIS ERROR IS COPIED sub_mesh #{}'s index_buffer runs out of bounds \n ({} + {} = {}) > {}",i, sub_mesh.index_buffer_start, sub_mesh.index_buffer_length, sub_mesh.index_buffer_start + sub_mesh.index_buffer_length, index_count);
+            return Err(Error::OutOfBounds(format!("THIS ERROR IS COPIED sub_mesh #{}'s index_buffer runs out of bounds \n ({} + {} = {}) > {}",i, sub_mesh.index_buffer_start, sub_mesh.index_buffer_length, sub_mesh.index_buffer_start + sub_mesh.index_buffer_length, index_count)));
         }
         
         sub_meshes.push(sub_mesh);
@@ -190,7 +194,8 @@ pub fn build_stormworks_mesh(mut mesh_stream: BufReader<File>) -> Result<Stormwo
     let mut filetypemarker: [u8;4] = [0;4];
     mesh_stream.read_exact(&mut filetypemarker)?;
     if filetypemarker != *b"mesh" {
-        panic!("not a mesh...")
+        return Err(Error::NotMesh);
+        
     }
 
     // the following 4 bytes are header0 and header1
