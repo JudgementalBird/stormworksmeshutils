@@ -1,3 +1,5 @@
+#![allow(private_interfaces)]
+
 use std::{fs::File, io::{self, BufReader, Read, Seek, SeekFrom}};
 use vek::{vec::repr_c::vec3::Vec3, Rgba};
 
@@ -101,7 +103,7 @@ fn build_indices(mesh_stream: &mut BufReader<File>, index_count: u32, vertex_cou
     for i in 0..index_count {
         let index = read_u16_from(mesh_stream)? as u32;
         if index >= vertex_count {
-            return Err(IndexIndexOutOfBounds { index: i, bounds: vertex_count }.into());
+            return Err(IndexIndexOutOfBounds { index: i, vertex_count }.into());
         }
         indices.push(index);
     }
