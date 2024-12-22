@@ -1,4 +1,4 @@
-use std::{array::TryFromSliceError, fmt, fs::File, io::{self, BufReader, Read, Seek, SeekFrom}, string::FromUtf8Error};
+use std::{fs::File, io::{self, BufReader, Read, Seek, SeekFrom}};
 use vek::{vec::repr_c::vec3::Vec3, Rgba};
 
 mod errors;
@@ -7,52 +7,6 @@ use errors::*;
 const BYTES_PER_COMPONENT: usize  = 4;
 const ENTRIES_PER_VERTEX: usize = 7;
 const BYTES_PER_VERTEX: usize = BYTES_PER_COMPONENT*ENTRIES_PER_VERTEX;
-
-/*
-impl From<std::string::FromUtf8Error> for StormworksParserError {
-    fn from(err: std::string::FromUtf8Error) -> Self {
-        StormworksParserError::CorruptFile(SpecificError::from(err))
-    }
-}
-impl From<std::io::Error> for StormworksParserError {
-    fn from(err: std::io::Error) -> Self {
-        StormworksParserError::CorruptFile(SpecificError::from(err))
-    }
-}
-impl From<TryFromSliceError> for StormworksParserError {
-    fn from(err: TryFromSliceError) -> Self {
-        StormworksParserError::CorruptFile(SpecificError::from(err))
-    }
-}
-impl From<SpecificError> for StormworksParserError {
-    fn from(err: SpecificError) -> Self {
-        match err {
-            SpecificError::FromUtf8(err) => {
-                StormworksParserError::CorruptFile(SpecificError::FromUtf8(err))
-            },
-            SpecificError::Io(err) => {
-                StormworksParserError::CorruptFile(err.into())
-            },
-            SpecificError::FromSlice(err) => {
-                StormworksParserError::CorruptFile(err.into())
-            },
-            SpecificError::SubMeshIndexOutOfBounds { submesh_id, index, bounds } => {
-                StormworksParserError::CorruptFile(SpecificError::SubMeshIndexOutOfBounds {submesh_id, index, bounds})
-            },
-            SpecificError::IndexOutOfBounds { index, bounds } => {
-                StormworksParserError::CorruptFile(SpecificError::IndexOutOfBounds { index, bounds})
-            },
-            SpecificError::TooBigNameLength => {
-                StormworksParserError::CorruptFile(SpecificError::TooBigNameLength)
-            },
-            SpecificError::InvalidStormworksShaderType(err) => {
-                StormworksParserError::CorruptFile(SpecificError::InvalidStormworksShaderType(err))
-            },
-        }
-    }
-}
-*/
-
 
 pub struct StormworksMeshVertexRecord {
     pub position: Vec3<f32>,
