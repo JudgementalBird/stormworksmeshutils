@@ -1,6 +1,8 @@
 #![allow(private_interfaces)]
 
 use std::{fs::File, io::{self, BufReader, Read, Seek, SeekFrom}};
+use bevy_asset::io::{AsyncSeekForward, Reader};
+use futures::AsyncRead;
 use vek::{vec::repr_c::vec3::Vec3, Rgba};
 
 mod errors;
@@ -168,7 +170,7 @@ fn build_sub_meshes(mesh_stream: &mut BufReader<File>, sub_mesh_count: u32, inde
 
 // our version of `public static Mesh LoadMesh(Stream stream, MeshDiagCallback diag = null)`
 /// yum,,!
-pub fn build_stormworks_mesh(mut mesh_stream: BufReader<File>) -> Result<StormworksMesh,StormworksParserError> {
+pub fn build_stormworks_mesh(mut mesh_stream: BufReader<Box<dyn Reader>>) -> Result<StormworksMesh,StormworksParserError> {
     // first 4 bytes are 4 chars, the file type header 'mesh'
     let mut filetypemarker: [u8;4] = [0;4];
     mesh_stream.read_exact(&mut filetypemarker)?;

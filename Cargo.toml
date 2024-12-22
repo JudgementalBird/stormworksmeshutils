@@ -10,6 +10,8 @@ keywords = ["gamedev", "stormworks", "mesh"]
 categories = ["rendering::data-formats"]
 
 [dependencies]
+bevy_asset = "0.15.0"
+futures = "0.3.31"
 vek = "0.17.1"
 
 [lib]
