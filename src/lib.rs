@@ -1,9 +1,58 @@
-use std::{array::TryFromSliceError, fs::File, io::{self, BufReader, Read, Seek, SeekFrom}, string::FromUtf8Error};
+use std::{array::TryFromSliceError, fmt, fs::File, io::{self, BufReader, Read, Seek, SeekFrom}, string::FromUtf8Error};
 use vek::{vec::repr_c::vec3::Vec3, Rgba};
+
+mod errors;
+use errors::*;
 
 const BYTES_PER_COMPONENT: usize  = 4;
 const ENTRIES_PER_VERTEX: usize = 7;
 const BYTES_PER_VERTEX: usize = BYTES_PER_COMPONENT*ENTRIES_PER_VERTEX;
+
+/*
+impl From<std::string::FromUtf8Error> for StormworksParserError {
+    fn from(err: std::string::FromUtf8Error) -> Self {
+        StormworksParserError::CorruptFile(SpecificError::from(err))
+    }
+}
+impl From<std::io::Error> for StormworksParserError {
+    fn from(err: std::io::Error) -> Self {
+        StormworksParserError::CorruptFile(SpecificError::from(err))
+    }
+}
+impl From<TryFromSliceError> for StormworksParserError {
+    fn from(err: TryFromSliceError) -> Self {
+        StormworksParserError::CorruptFile(SpecificError::from(err))
+    }
+}
+impl From<SpecificError> for StormworksParserError {
+    fn from(err: SpecificError) -> Self {
+        match err {
+            SpecificError::FromUtf8(err) => {
+                StormworksParserError::CorruptFile(SpecificError::FromUtf8(err))
+            },
+            SpecificError::Io(err) => {
+                StormworksParserError::CorruptFile(err.into())
+            },
+            SpecificError::FromSlice(err) => {
+                StormworksParserError::CorruptFile(err.into())
+            },
+            SpecificError::SubMeshIndexOutOfBounds { submesh_id, index, bounds } => {
+                StormworksParserError::CorruptFile(SpecificError::SubMeshIndexOutOfBounds {submesh_id, index, bounds})
+            },
+            SpecificError::IndexOutOfBounds { index, bounds } => {
+                StormworksParserError::CorruptFile(SpecificError::IndexOutOfBounds { index, bounds})
+            },
+            SpecificError::TooBigNameLength => {
+                StormworksParserError::CorruptFile(SpecificError::TooBigNameLength)
+            },
+            SpecificError::InvalidStormworksShaderType(err) => {
+                StormworksParserError::CorruptFile(SpecificError::InvalidStormworksShaderType(err))
+            },
+        }
+    }
+}
+*/
+
 
 pub struct StormworksMeshVertexRecord {
     pub position: Vec3<f32>,
@@ -18,13 +67,13 @@ pub enum StormworksShaderType {
     Lava = 3
 }
 impl StormworksShaderType {
-    fn from_u16(i: u16) -> Result<Self,Error> {
+    fn from_u16(i: u16) -> Result<Self,InvalidStormworksShaderType> {
         match i {
             0 => Ok(StormworksShaderType::Opaque),
             1 => Ok(StormworksShaderType::Transparent),
             2 => Ok(StormworksShaderType::Emissive),
             3 => Ok(StormworksShaderType::Lava),
-            _ => Err(Error::InvalidStormworksShaderType(i)),
+            _ => Err(InvalidStormworksShaderType(i)),
         }
     }
 }
@@ -44,38 +93,12 @@ pub struct StormworksMesh {
     pub sub_meshes: Vec<StormworksSubMesh>,
 }
 
-#[derive(Debug)]
-pub enum Error {
-    FromUtf8(FromUtf8Error),
-    Io(io::Error),
-    FromSlice(TryFromSliceError),
-    OutOfBounds(String),
-    Larderous(String),
-    NotMesh,
-    InvalidStormworksShaderType(u16),
-}
-impl From<FromUtf8Error> for Error {
-    fn from(value: FromUtf8Error) -> Self {
-        Error::FromUtf8(value)
-    }
-}
-impl From<io::Error> for Error {
-    fn from(value: io::Error) -> Self {
-        Error::Io(value)
-    }
-}
-impl From<TryFromSliceError> for Error {
-    fn from(value: TryFromSliceError) -> Self {
-        Error::FromSlice(value)
-    }
-}
-
-fn read_u16_from(reader: &mut BufReader<File>) -> Result<u16,Error> {
+fn read_u16_from(reader: &mut BufReader<File>) -> Result<u16,io::Error> {
     let mut byte_buffer: [u8;2] = [0;2];
     reader.read_exact(&mut byte_buffer)?;
     Ok(u16::from_le_bytes(byte_buffer))
 }
-fn read_u32_from(reader: &mut BufReader<File>) -> Result<u32,Error> {
+fn read_u32_from(reader: &mut BufReader<File>) -> Result<u32,io::Error> {
     let mut byte_buffer: [u8;4] = [0;4];
     reader.read_exact(&mut byte_buffer)?;
     Ok(u32::from_le_bytes(byte_buffer))
@@ -83,7 +106,7 @@ fn read_u32_from(reader: &mut BufReader<File>) -> Result<u32,Error> {
 
 
 // Our version of `public VertexRecord(byte[] bytes)`
-fn build_vertex_record(mesh_stream: &mut BufReader<File>) -> Result<StormworksMeshVertexRecord,Error> {
+fn build_vertex_record(mesh_stream: &mut BufReader<File>) -> Result<StormworksMeshVertexRecord,Box<dyn SpecificError>> {
 
     let mut vertex_record_bytes = [0_u8;BYTES_PER_VERTEX];
     mesh_stream.read_exact(&mut vertex_record_bytes)?;
@@ -111,7 +134,7 @@ fn build_vertex_record(mesh_stream: &mut BufReader<File>) -> Result<StormworksMe
     })
 }
 
-fn build_vertices(mesh_stream: &mut BufReader<File>, vertex_count: u32) -> Result<Vec<StormworksMeshVertexRecord>,Error> {
+fn build_vertices(mesh_stream: &mut BufReader<File>, vertex_count: u32) -> Result<Vec<StormworksMeshVertexRecord>,Box<dyn SpecificError>> {
     let mut vertices = Vec::new();
     for _ in 0..vertex_count {
         vertices.push(build_vertex_record(mesh_stream)?);
@@ -119,19 +142,19 @@ fn build_vertices(mesh_stream: &mut BufReader<File>, vertex_count: u32) -> Resul
     return Ok(vertices)
 }
 
-fn build_indices(mesh_stream: &mut BufReader<File>, index_count: u32, vertex_count: u32) -> Result<Vec<u32>,Error> {
+fn build_indices(mesh_stream: &mut BufReader<File>, index_count: u32, vertex_count: u32) -> Result<Vec<u32>,Box<dyn SpecificError>> {
     let mut indices = Vec::new();
     for i in 0..index_count {
         let index = read_u16_from(mesh_stream)? as u32;
         if index >= vertex_count {
-            return Err(Error::OutOfBounds(format!("Index #{i} is out of bounds {index} > {vertex_count}.")));
+            return Err(IndexIndexOutOfBounds { index: i, bounds: vertex_count }.into());
         }
         indices.push(index);
     }
     return Ok(indices)
 }
 
-fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> Result<StormworksSubMesh,Error> {
+fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> Result<StormworksSubMesh,Box<dyn SpecificError>> {
     let index_buffer_start = read_u32_from(mesh_stream)?;
 
     let index_buffer_length = read_u32_from(mesh_stream)?;
@@ -147,7 +170,7 @@ fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> Result<StormworksSubMesh
     let name_length_bytes = read_u16_from(mesh_stream)?;
     
     if name_length_bytes > 1_000 {
-        return Err(Error::Larderous(String::from("name_length_bytes is extremely larderous.")));
+        return Err(TooBigNameLength.into());
     }
 
     let mut name_buf = Vec::with_capacity(name_length_bytes as usize);
@@ -169,17 +192,17 @@ fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> Result<StormworksSubMesh
     })
 }
 
-fn build_sub_meshes(mesh_stream: &mut BufReader<File>, sub_mesh_count: u32, index_count: u32) -> Result<Vec<StormworksSubMesh>,Error> {
+fn build_sub_meshes(mesh_stream: &mut BufReader<File>, sub_mesh_count: u32, index_count: u32) -> Result<Vec<StormworksSubMesh>,Box<dyn SpecificError>> {
     let mut sub_meshes = Vec::with_capacity(sub_mesh_count as usize);
     for i in 0..sub_mesh_count {
         let sub_mesh = build_sub_mesh(mesh_stream)?;
         
         if sub_mesh.index_buffer_start > index_count {
-            return Err(Error::OutOfBounds(format!("THIS ERROR IS COPIED sub_mesh #{}'s index_buffer starts out of bounds {} > {}",i,sub_mesh.index_buffer_start,index_count)));
+            return Err(SubMeshIndexOutOfBounds { submesh_id: i, index: sub_mesh.index_buffer_start, relevant_bound: index_count }.into())
         }
 
         if sub_mesh.index_buffer_start + sub_mesh.index_buffer_length > index_count {
-            return Err(Error::OutOfBounds(format!("THIS ERROR IS COPIED sub_mesh #{}'s index_buffer runs out of bounds \n ({} + {} = {}) > {}",i, sub_mesh.index_buffer_start, sub_mesh.index_buffer_length, sub_mesh.index_buffer_start + sub_mesh.index_buffer_length, index_count)));
+            return Err(SubMeshIndexOutOfBounds { submesh_id: i, index: sub_mesh.index_buffer_start + sub_mesh.index_buffer_length, relevant_bound: index_count }.into())
         }
         
         sub_meshes.push(sub_mesh);
@@ -189,12 +212,13 @@ fn build_sub_meshes(mesh_stream: &mut BufReader<File>, sub_mesh_count: u32, inde
 
 // our version of `public static Mesh LoadMesh(Stream stream, MeshDiagCallback diag = null)`
 /// yum,,!
-pub fn build_stormworks_mesh(mut mesh_stream: BufReader<File>) -> Result<StormworksMesh,Error> {
+//pub fn build_stormworks_mesh<R: std::io::Read>(reader: R) -> Result<StormworksMesh, Box<dyn Error>> {
+pub fn build_stormworks_mesh(mut mesh_stream: BufReader<File>) -> Result<StormworksMesh,StormworksParserError> {
     // first 4 bytes are 4 chars, the file type header 'mesh'
     let mut filetypemarker: [u8;4] = [0;4];
     mesh_stream.read_exact(&mut filetypemarker)?;
     if filetypemarker != *b"mesh" {
-        return Err(Error::NotMesh);
+        return Err(StormworksParserError::NotMesh);
         
     }
 
