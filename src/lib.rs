@@ -168,7 +168,6 @@ fn build_sub_meshes(mesh_stream: &mut BufReader<File>, sub_mesh_count: u32, inde
 
 // our version of `public static Mesh LoadMesh(Stream stream, MeshDiagCallback diag = null)`
 /// yum,,!
-//pub fn build_stormworks_mesh<R: std::io::Read>(reader: R) -> Result<StormworksMesh, Box<dyn Error>> {
 pub fn build_stormworks_mesh(mut mesh_stream: BufReader<File>) -> Result<StormworksMesh,StormworksParserError> {
     // first 4 bytes are 4 chars, the file type header 'mesh'
     let mut filetypemarker: [u8;4] = [0;4];
