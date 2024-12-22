@@ -4,7 +4,7 @@ pub(crate) trait SpecificError {}
 
 pub(crate) struct SubMeshIndexOutOfBounds {pub submesh_id: u32, pub index: u32, pub relevant_bound: u32}
 pub(crate) struct IndexIndexOutOfBounds {pub index: u32, pub bounds: u32}
-pub(crate) struct TooBigNameLength;
+pub(crate) struct TooBigNameLength;//previously known as larderous
 pub(crate) struct InvalidStormworksShaderType(pub u16);
 
 impl SpecificError for string::FromUtf8Error {}
