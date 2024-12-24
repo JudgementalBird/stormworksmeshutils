@@ -1,6 +1,6 @@
 [package]
 name = "stormworks_mesh_parser"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 license = "GPL-3.0-or-later"
 description = "Rust util relating to stormworks .mesh files. Straight rewrite of parts of CodeLeopard's C# program because we needed it in rust"

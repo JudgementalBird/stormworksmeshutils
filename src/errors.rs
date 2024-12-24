@@ -75,6 +75,16 @@ impl fmt::Display for StormworksParserError {
 		 }
 	}
 }
+impl fmt::Debug for StormworksParserError {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			 StormworksParserError::NotMesh => write!(f, "File is not a .mesh"),
+			 StormworksParserError::CorruptFile(err) => {
+				  write!(f, "File doesn't represent a valid mesh - Did you try to parse a non-stormworks mesh, or is the file corrupted? Internal library error: {}", err)
+			 }
+		}
+  }
+}
 
 // Convenience, so ? can be used everywhere.
 impl From<string::FromUtf8Error> for Box<dyn SpecificError> {
