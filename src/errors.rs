@@ -13,7 +13,7 @@ pub(crate) struct TooBigNameLength;//previously known as larderous
 pub(crate) struct InvalidStormworksShaderType(pub u16);
 
 // SpecificError serves to group all potential errors this function can fail with, and no more.
-pub(crate) trait SpecificError: fmt::Display {}
+pub(crate) trait SpecificError: fmt::Display+fmt::Debug {}
 impl SpecificError for string::FromUtf8Error {}
 impl SpecificError for io::Error {}
 impl SpecificError for array::TryFromSliceError {}
@@ -39,6 +39,27 @@ impl fmt::Display for TooBigNameLength {
   }
 }
 impl fmt::Display for InvalidStormworksShaderType {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+	  write!(f, "Tried to make shader with type: {}", self.0)
+  }
+}
+// Copied for debug
+impl fmt::Debug for SubMeshIndexOutOfBounds {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		 write!(f, "Submesh {}'s indexbuffer either starts or runs out of bounds: index {} exceeds bound: {}", self.submesh_id, self.index, self.relevant_bound)
+	}
+}
+impl fmt::Debug for IndexIndexOutOfBounds {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "While building indices, an index, number {}, exceeded the vertex count, {}", self.index, self.vertex_count)
+  }
+}
+impl fmt::Debug for TooBigNameLength {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+	  write!(f, "name_length_bytes is extremely larderous")
+  }
+}
+impl fmt::Debug for InvalidStormworksShaderType {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 	  write!(f, "Tried to make shader with type: {}", self.0)
   }
