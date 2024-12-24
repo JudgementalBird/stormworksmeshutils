@@ -13,6 +13,11 @@ categories = ["rendering::data-formats"]
 bevy_asset = "0.15.0"
 futures = "0.3.31"
 vek = "0.17.1"
+bevy_mesh = { version="0.15.0", optional=true }
+bevy_render = { version="0.15.0", optional=true }
 
 [lib]
 crate-type = ["lib"]
+
+[features]
+bevy-integration = ["dep:bevy_mesh", "dep:bevy_render"]

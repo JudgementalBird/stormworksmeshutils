@@ -211,3 +211,32 @@ pub async fn build_stormworks_mesh(mut mesh_stream: Box<dyn Reader>) -> Result<S
         sub_meshes
     })
 }
+
+#[cfg(feature = "bevy-integration")]
+impl From<StormworksMesh> for bevy_mesh::Mesh {
+    fn from(stormworks_mesh: StormworksMesh) -> Self {
+        use bevy_render::render_asset::RenderAssetUsages;
+
+        const LINEAR_RGB_CONVERSION_CONSTANT: f32 = 1.0/2.2;
+
+        let mut verticies = Vec::with_capacity(stormworks_mesh.index_count as usize);
+        let mut normals = Vec::with_capacity(stormworks_mesh.index_count as usize);
+        let mut colors = Vec::with_capacity(stormworks_mesh.index_count as usize);
+
+        for vertex in &stormworks_mesh.vertices {
+            verticies.push([-vertex.position.x,vertex.position.y,vertex.position.z]);
+            normals.push([vertex.normal.x,vertex.normal.y,vertex.normal.z]);
+            colors.push([
+                (vertex.color.r as f32).powf(LINEAR_RGB_CONVERSION_CONSTANT),
+                (vertex.color.g as f32).powf(LINEAR_RGB_CONVERSION_CONSTANT),
+                (vertex.color.b as f32).powf(LINEAR_RGB_CONVERSION_CONSTANT),
+                vertex.color.a as f32
+            ]);
+        }
+        bevy_mesh::Mesh::new(bevy_mesh::PrimitiveTopology::TriangleList, RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD)
+        .with_inserted_attribute(bevy_mesh::Mesh::ATTRIBUTE_POSITION,verticies)
+        .with_inserted_attribute(bevy_mesh::Mesh::ATTRIBUTE_COLOR,colors)
+        .with_inserted_attribute(bevy_mesh::Mesh::ATTRIBUTE_NORMAL,normals)
+        .with_inserted_indices(bevy_mesh::Indices::U32(stormworks_mesh.indices.clone())) //ask judge about
+    }
+}
