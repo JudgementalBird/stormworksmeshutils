@@ -1,8 +1,7 @@
 #![allow(private_interfaces)]
 
-use std::{fs::File, io::{self, BufReader, Read, Seek, SeekFrom}};
-use bevy_asset::{io::{AsyncSeekForward, AsyncSeekForwardExt, Reader}, AsyncReadExt};
-use futures::AsyncRead;
+use std::io;
+use bevy_asset::{io::{AsyncSeekForwardExt, Reader}, AsyncReadExt};
 use vek::{vec::repr_c::vec3::Vec3, Rgba};
 
 mod errors;
