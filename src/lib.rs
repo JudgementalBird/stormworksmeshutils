@@ -50,12 +50,12 @@ pub struct StormworksMesh {
     pub sub_meshes: Vec<StormworksSubMesh>,
 }
 
-async fn read_u16_from(reader: &mut Box<dyn Reader>) -> Result<u16,io::Error> {
+async fn async_read_u16_from(reader: &mut Box<dyn Reader>) -> Result<u16,io::Error> {
     let mut byte_buffer: [u8;2] = [0;2];
     reader.read_exact(&mut byte_buffer).await?;
     Ok(u16::from_le_bytes(byte_buffer))
 }
-async fn read_u32_from(reader: &mut Box<dyn Reader>) -> Result<u32,io::Error> {
+async fn async_read_u32_from(reader: &mut Box<dyn Reader>) -> Result<u32,io::Error> {
     let mut byte_buffer: [u8;4] = [0;4];
     reader.read_exact(&mut byte_buffer).await?;
     Ok(u32::from_le_bytes(byte_buffer))
@@ -63,7 +63,7 @@ async fn read_u32_from(reader: &mut Box<dyn Reader>) -> Result<u32,io::Error> {
 
 
 // Our version of `public VertexRecord(byte[] bytes)`
-async fn build_vertex_record(mesh_stream: &mut Box<dyn Reader>) -> Result<StormworksMeshVertexRecord,Box<dyn SpecificError>> {
+async fn async_build_vertex_record(mesh_stream: &mut Box<dyn Reader>) -> Result<StormworksMeshVertexRecord,Box<dyn SpecificError>> {
 
     let mut vertex_record_bytes = [0_u8;BYTES_PER_VERTEX];
     mesh_stream.read_exact(&mut vertex_record_bytes).await?;
@@ -91,7 +91,7 @@ async fn build_vertex_record(mesh_stream: &mut Box<dyn Reader>) -> Result<Stormw
     })
 }
 
-async fn build_vertices(mesh_stream: &mut Box<dyn Reader>, vertex_count: u32) -> Result<Vec<StormworksMeshVertexRecord>,Box<dyn SpecificError>> {
+async fn async_build_vertices(mesh_stream: &mut Box<dyn Reader>, vertex_count: u32) -> Result<Vec<StormworksMeshVertexRecord>,Box<dyn SpecificError>> {
     let mut vertices = Vec::new();
     for _ in 0..vertex_count {
         vertices.push(build_vertex_record(mesh_stream).await?);
@@ -99,7 +99,7 @@ async fn build_vertices(mesh_stream: &mut Box<dyn Reader>, vertex_count: u32) ->
     return Ok(vertices)
 }
 
-async fn build_indices(mesh_stream: &mut Box<dyn Reader>, index_count: u32, vertex_count: u32) -> Result<Vec<u32>,Box<dyn SpecificError>> {
+async fn async_build_indices(mesh_stream: &mut Box<dyn Reader>, index_count: u32, vertex_count: u32) -> Result<Vec<u32>,Box<dyn SpecificError>> {
     let mut indices = Vec::new();
     for i in 0..index_count {
         let index = read_u16_from(mesh_stream).await? as u32;
@@ -111,7 +111,7 @@ async fn build_indices(mesh_stream: &mut Box<dyn Reader>, index_count: u32, vert
     return Ok(indices)
 }
 
-async fn build_sub_mesh(mesh_stream: &mut Box<dyn Reader>) -> Result<StormworksSubMesh,Box<dyn SpecificError>> {
+async fn async_build_sub_mesh(mesh_stream: &mut Box<dyn Reader>) -> Result<StormworksSubMesh,Box<dyn SpecificError>> {
     let index_buffer_start = read_u32_from(mesh_stream).await?;
 
     let index_buffer_length = read_u32_from(mesh_stream).await?;
@@ -149,7 +149,7 @@ async fn build_sub_mesh(mesh_stream: &mut Box<dyn Reader>) -> Result<StormworksS
     })
 }
 
-async fn build_sub_meshes(mesh_stream: &mut Box<dyn Reader>, sub_mesh_count: u32, index_count: u32) -> Result<Vec<StormworksSubMesh>,Box<dyn SpecificError>> {
+async fn async_build_sub_meshes(mesh_stream: &mut Box<dyn Reader>, sub_mesh_count: u32, index_count: u32) -> Result<Vec<StormworksSubMesh>,Box<dyn SpecificError>> {
     let mut sub_meshes = Vec::with_capacity(sub_mesh_count as usize);
     for i in 0..sub_mesh_count {
         let sub_mesh = build_sub_mesh(mesh_stream).await?;
@@ -169,7 +169,7 @@ async fn build_sub_meshes(mesh_stream: &mut Box<dyn Reader>, sub_mesh_count: u32
 
 // our version of `public static Mesh LoadMesh(Stream stream, MeshDiagCallback diag = null)`
 /// yum,,!
-pub async fn build_stormworks_mesh(mut mesh_stream: Box<dyn Reader>) -> Result<StormworksMesh,StormworksParserError> {
+pub async fn async_build_stormworks_mesh(mut mesh_stream: Box<dyn Reader>) -> Result<StormworksMesh,StormworksParserError> {
 
     // first 4 bytes are 4 chars, the file type header 'mesh'
     let mut filetypemarker: [u8;4] = [0;4];
