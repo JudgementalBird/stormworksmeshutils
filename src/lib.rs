@@ -94,7 +94,7 @@ async fn async_build_vertex_record(mesh_stream: &mut Box<dyn Reader>) -> Result<
 async fn async_build_vertices(mesh_stream: &mut Box<dyn Reader>, vertex_count: u32) -> Result<Vec<StormworksMeshVertexRecord>,Box<dyn SpecificError>> {
     let mut vertices = Vec::new();
     for _ in 0..vertex_count {
-        vertices.push(build_vertex_record(mesh_stream).await?);
+        vertices.push(async_build_vertex_record(mesh_stream).await?);
     }
     return Ok(vertices)
 }
@@ -102,7 +102,7 @@ async fn async_build_vertices(mesh_stream: &mut Box<dyn Reader>, vertex_count: u
 async fn async_build_indices(mesh_stream: &mut Box<dyn Reader>, index_count: u32, vertex_count: u32) -> Result<Vec<u32>,Box<dyn SpecificError>> {
     let mut indices = Vec::new();
     for i in 0..index_count {
-        let index = read_u16_from(mesh_stream).await? as u32;
+        let index = async_read_u16_from(mesh_stream).await? as u32;
         if index >= vertex_count {
             return Err(IndexIndexOutOfBounds { index: i, vertex_count }.into());
         }
@@ -112,19 +112,19 @@ async fn async_build_indices(mesh_stream: &mut Box<dyn Reader>, index_count: u32
 }
 
 async fn async_build_sub_mesh(mesh_stream: &mut Box<dyn Reader>) -> Result<StormworksSubMesh,Box<dyn SpecificError>> {
-    let index_buffer_start = read_u32_from(mesh_stream).await?;
+    let index_buffer_start = async_read_u32_from(mesh_stream).await?;
 
-    let index_buffer_length = read_u32_from(mesh_stream).await?;
+    let index_buffer_length = async_read_u32_from(mesh_stream).await?;
 
     mesh_stream.seek_forward(2).await?; // Header 2
 
     let shader_id = StormworksShaderType::from_u16(
-        read_u16_from(mesh_stream).await?
+        async_read_u16_from(mesh_stream).await?
     )?;
 
     mesh_stream.seek_forward(4*3+4*3+2).await?;
 
-    let name_length_bytes = read_u16_from(mesh_stream).await?;
+    let name_length_bytes = async_read_u16_from(mesh_stream).await?;
     
     if name_length_bytes > 1_000 {
         return Err(TooBigNameLength.into());
@@ -152,7 +152,7 @@ async fn async_build_sub_mesh(mesh_stream: &mut Box<dyn Reader>) -> Result<Storm
 async fn async_build_sub_meshes(mesh_stream: &mut Box<dyn Reader>, sub_mesh_count: u32, index_count: u32) -> Result<Vec<StormworksSubMesh>,Box<dyn SpecificError>> {
     let mut sub_meshes = Vec::with_capacity(sub_mesh_count as usize);
     for i in 0..sub_mesh_count {
-        let sub_mesh = build_sub_mesh(mesh_stream).await?;
+        let sub_mesh = async_build_sub_mesh(mesh_stream).await?;
         
         if sub_mesh.index_buffer_start > index_count {
             return Err(SubMeshIndexOutOfBounds { submesh_id: i, index: sub_mesh.index_buffer_start, relevant_bound: index_count }.into())
@@ -182,22 +182,22 @@ pub async fn async_build_stormworks_mesh(mut mesh_stream: Box<dyn Reader>) -> Re
     // the following 4 bytes are header0 and header1
     mesh_stream.seek_forward(4).await?;
 
-    let vertex_count = read_u16_from(&mut mesh_stream).await? as u32;
+    let vertex_count = async_read_u16_from(&mut mesh_stream).await? as u32;
 
     // the following 4 bytes are header3 and header4
     mesh_stream.seek_forward(4).await?;
 
-    let vertices = build_vertices(&mut mesh_stream, vertex_count).await?;
+    let vertices = async_build_vertices(&mut mesh_stream, vertex_count).await?;
 
     // on to indices
-    let index_count = read_u32_from(&mut mesh_stream).await?;
+    let index_count = async_read_u32_from(&mut mesh_stream).await?;
 
-    let indices = build_indices(&mut mesh_stream, index_count, vertex_count).await?;
+    let indices = async_build_indices(&mut mesh_stream, index_count, vertex_count).await?;
 
     // on to submeshes
-    let sub_mesh_count = read_u16_from(&mut mesh_stream).await? as u32;
+    let sub_mesh_count = async_read_u16_from(&mut mesh_stream).await? as u32;
     
-    let sub_meshes = build_sub_meshes(&mut mesh_stream, sub_mesh_count, index_count).await?;
+    let sub_meshes = async_build_sub_meshes(&mut mesh_stream, sub_mesh_count, index_count).await?;
 
     // end of data
 
