@@ -3,6 +3,8 @@
 use std::{fs::File, io::{self, BufReader, Read, Seek, SeekFrom}};
 use vek::{vec::repr_c::vec3::Vec3, Rgba};
 
+mod errors;
+pub use errors::*;
 
 #[cfg(feature = "bevy-integration")]
 use bevy::{
@@ -14,8 +16,7 @@ use bevy::{
     asset::AsyncReadExt,
 };
 
-mod errors;
-use errors::*;
+
 
 
 const BYTES_PER_COMPONENT: usize  = 4;
