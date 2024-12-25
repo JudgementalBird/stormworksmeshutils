@@ -1,8 +1,18 @@
 #![allow(private_interfaces)]
 
 use std::{fs::File, io::{self, BufReader, Read, Seek, SeekFrom}};
-use bevy_asset::{io::{AsyncSeekForwardExt, Reader}, AsyncReadExt};
 use vek::{vec::repr_c::vec3::Vec3, Rgba};
+
+
+#[cfg(feature = "bevy-integration")]
+use bevy::{
+    asset::{Asset, RenderAssetUsages},
+    prelude::Mesh,
+    reflect::TypePath,
+    render::mesh::{Indices, PrimitiveTopology},
+    asset::io::{Reader, AsyncSeekForwardExt},
+    asset::AsyncReadExt,
+};
 
 mod errors;
 use errors::*;
@@ -42,6 +52,7 @@ pub struct StormworksSubMesh {
     pub name_length_bytes: u16,
     pub name: String,
 }
+#[cfg_attr(feature = "bevy-integration", derive(Asset,TypePath))]
 pub struct StormworksMesh {
     pub vertex_count: u32,
     pub vertices: Vec<StormworksMeshVertexRecord>,
@@ -51,9 +62,8 @@ pub struct StormworksMesh {
     pub sub_meshes: Vec<StormworksSubMesh>,
 }
 #[cfg(feature = "bevy-integration")]
-impl From<StormworksMesh> for bevy_mesh::Mesh {
+impl From<StormworksMesh> for Mesh {
     fn from(stormworks_mesh: StormworksMesh) -> Self {
-        use bevy_render::render_asset::RenderAssetUsages;
 
         const LINEAR_RGB_CONVERSION_CONSTANT: f32 = 1.0/2.2;
 
@@ -71,20 +81,23 @@ impl From<StormworksMesh> for bevy_mesh::Mesh {
                 vertex.color.a as f32
             ]);
         }
-        bevy_mesh::Mesh::new(bevy_mesh::PrimitiveTopology::TriangleList, RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD)
-        .with_inserted_attribute(bevy_mesh::Mesh::ATTRIBUTE_POSITION,verticies)
-        .with_inserted_attribute(bevy_mesh::Mesh::ATTRIBUTE_COLOR,colors)
-        .with_inserted_attribute(bevy_mesh::Mesh::ATTRIBUTE_NORMAL,normals)
-        .with_inserted_indices(bevy_mesh::Indices::U32(stormworks_mesh.indices.clone())) //ask judge about
+        Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION,verticies)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_COLOR,colors)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL,normals)
+        .with_inserted_indices(Indices::U32(stormworks_mesh.indices.clone())) //ask judge about
     }
 }
+
 
 fn read_u16_from(reader: &mut BufReader<File>) -> Result<u16,io::Error> {
     let mut byte_buffer: [u8;2] = [0;2];
     reader.read_exact(&mut byte_buffer)?;
     Ok(u16::from_le_bytes(byte_buffer))
 }
+#[cfg(feature = "async")]
 async fn async_read_u16_from(reader: &mut Box<dyn Reader>) -> Result<u16,io::Error> {
+
     let mut byte_buffer: [u8;2] = [0;2];
     reader.read_exact(&mut byte_buffer).await?;
     Ok(u16::from_le_bytes(byte_buffer))
@@ -96,6 +109,7 @@ fn read_u32_from(reader: &mut BufReader<File>) -> Result<u32,io::Error> {
     reader.read_exact(&mut byte_buffer)?;
     Ok(u32::from_le_bytes(byte_buffer))
 }
+#[cfg(feature = "async")]
 async fn async_read_u32_from(reader: &mut Box<dyn Reader>) -> Result<u32,io::Error> {
     let mut byte_buffer: [u8;4] = [0;4];
     reader.read_exact(&mut byte_buffer).await?;
@@ -131,6 +145,7 @@ fn build_vertex_record(mesh_stream: &mut BufReader<File>) -> Result<StormworksMe
         normal
     })
 }
+#[cfg(feature = "async")]
 // Our async version of `public VertexRecord(byte[] bytes)`
 async fn async_build_vertex_record(mesh_stream: &mut Box<dyn Reader>) -> Result<StormworksMeshVertexRecord,Box<dyn SpecificError>> {
 
@@ -168,6 +183,7 @@ fn build_vertices(mesh_stream: &mut BufReader<File>, vertex_count: u32) -> Resul
     }
     return Ok(vertices)
 }
+#[cfg(feature = "async")]
 async fn async_build_vertices(mesh_stream: &mut Box<dyn Reader>, vertex_count: u32) -> Result<Vec<StormworksMeshVertexRecord>,Box<dyn SpecificError>> {
     let mut vertices = Vec::new();
     for _ in 0..vertex_count {
@@ -188,6 +204,7 @@ fn build_indices(mesh_stream: &mut BufReader<File>, index_count: u32, vertex_cou
     }
     return Ok(indices)
 }
+#[cfg(feature = "async")]
 async fn async_build_indices(mesh_stream: &mut Box<dyn Reader>, index_count: u32, vertex_count: u32) -> Result<Vec<u32>,Box<dyn SpecificError>> {
     let mut indices = Vec::new();
     for i in 0..index_count {
@@ -238,7 +255,9 @@ fn build_sub_mesh(mesh_stream: &mut BufReader<File>) -> Result<StormworksSubMesh
         name
     })
 }
+#[cfg(feature = "async")]
 async fn async_build_sub_mesh(mesh_stream: &mut Box<dyn Reader>) -> Result<StormworksSubMesh,Box<dyn SpecificError>> {
+
     let index_buffer_start = async_read_u32_from(mesh_stream).await?;
 
     let index_buffer_length = async_read_u32_from(mesh_stream).await?;
@@ -294,6 +313,7 @@ fn build_sub_meshes(mesh_stream: &mut BufReader<File>, sub_mesh_count: u32, inde
     }
     return Ok(sub_meshes)
 }
+#[cfg(feature = "async")]
 async fn async_build_sub_meshes(mesh_stream: &mut Box<dyn Reader>, sub_mesh_count: u32, index_count: u32) -> Result<Vec<StormworksSubMesh>,Box<dyn SpecificError>> {
     let mut sub_meshes = Vec::with_capacity(sub_mesh_count as usize);
     for i in 0..sub_mesh_count {
@@ -355,6 +375,7 @@ pub fn build_stormworks_mesh(mut mesh_stream: BufReader<File>) -> Result<Stormwo
         sub_meshes
     })
 }
+#[cfg(feature = "async")]
 // our async version of `public static Mesh LoadMesh(Stream stream, MeshDiagCallback diag = null)`
 /// yum,,!!!!
 pub async fn async_build_stormworks_mesh(mut mesh_stream: Box<dyn Reader>) -> Result<StormworksMesh,StormworksParserError> {
