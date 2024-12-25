@@ -5,6 +5,8 @@ pub enum StormworksParserError {
 	NotMesh,
 	CorruptFile(Box<dyn SpecificError>)
 }
+impl std::error::Error for StormworksParserError {}
+
 
 // Error types unique to this lib
 pub(crate) struct SubMeshIndexOutOfBounds {pub submesh_id: u32, pub index: u32, pub relevant_bound: u32}
@@ -13,7 +15,7 @@ pub(crate) struct TooBigNameLength;//previously known as larderous
 pub(crate) struct InvalidStormworksShaderType(pub u16);
 
 // SpecificError serves to group all potential errors this function can fail with, and no more.
-pub(crate) trait SpecificError: fmt::Display+fmt::Debug {}
+pub(crate) trait SpecificError: fmt::Display+fmt::Debug + Send + Sync {}
 impl SpecificError for string::FromUtf8Error {}
 impl SpecificError for io::Error {}
 impl SpecificError for array::TryFromSliceError {}
