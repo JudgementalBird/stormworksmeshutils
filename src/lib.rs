@@ -335,7 +335,6 @@ async fn async_build_sub_meshes(mesh_stream: &mut dyn Reader, sub_mesh_count: u3
 
 
 // our version of `public static Mesh LoadMesh(Stream stream, MeshDiagCallback diag = null)`
-/// yum,,!
 pub fn build_stormworks_mesh(mut mesh_stream: BufReader<File>) -> Result<StormworksMesh,StormworksParserError> {
     // first 4 bytes are 4 chars, the file type header 'mesh'
     let mut filetypemarker: [u8;4] = [0;4];
@@ -378,7 +377,6 @@ pub fn build_stormworks_mesh(mut mesh_stream: BufReader<File>) -> Result<Stormwo
 }
 #[cfg(feature = "async")]
 // our async version of `public static Mesh LoadMesh(Stream stream, MeshDiagCallback diag = null)`
-/// yum,,!!!! 
 pub async fn async_build_stormworks_mesh(mesh_stream: &mut dyn Reader) -> Result<StormworksMesh,StormworksParserError> {
 
     // first 4 bytes are 4 chars, the file type header 'mesh'
